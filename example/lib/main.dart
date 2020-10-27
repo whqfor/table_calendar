@@ -2,16 +2,27 @@
 //  Licensed under Apache License v2.0
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:table_calendar/table_calendar.dart';
 
+class Event {
+  final String title;
+
+  Event(this.title);
+
+  @override
+  String toString() => 'Event: $title';
+}
+
 // Example holidays
-final Map<DateTime, List> _holidays = {
-  DateTime(2019, 1, 1): ['New Year\'s Day'],
-  DateTime(2019, 1, 6): ['Epiphany'],
-  DateTime(2019, 2, 14): ['Valentine\'s Day'],
-  DateTime(2019, 4, 21): ['Easter Sunday'],
-  DateTime(2019, 4, 22): ['Easter Monday'],
+final Map<DateTime, List<Event>> _holidays = {
+  DateTime(2020, 1, 1): [Event('New Year\'s Day')],
+  DateTime(2020, 1, 6): [Event('Epiphany')],
+  DateTime(2020, 2, 14): [Event('Valentine\'s Day')],
+  DateTime(2020, 4, 21): [Event('Easter Sunday')],
+  DateTime(2020, 4, 22): [Event('Easter Monday')],
+  DateTime(2020, 8, 22): [Event('Easter Monday')],
 };
 
 void main() {
@@ -41,36 +52,38 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
-  Map<DateTime, List> _events;
-  List _selectedEvents;
+  Map<DateTime, List<Event>> _events;
+  List<Event> _selectedEvents;
+  DateTime _selectedDay;
+  CalendarFormat _calendarFormat;
   AnimationController _animationController;
-  CalendarController _calendarController;
+  CalendarController<Event> _calendarController;
 
   @override
   void initState() {
     super.initState();
-    final _selectedDay = DateTime.now();
+    _selectedDay = DateTime.now();
 
     _events = {
-      _selectedDay.subtract(Duration(days: 30)): ['Event A0', 'Event B0', 'Event C0'],
-      _selectedDay.subtract(Duration(days: 27)): ['Event A1'],
-      _selectedDay.subtract(Duration(days: 20)): ['Event A2', 'Event B2', 'Event C2', 'Event D2'],
-      _selectedDay.subtract(Duration(days: 16)): ['Event A3', 'Event B3'],
-      _selectedDay.subtract(Duration(days: 10)): ['Event A4', 'Event B4', 'Event C4'],
-      _selectedDay.subtract(Duration(days: 4)): ['Event A5', 'Event B5', 'Event C5'],
-      _selectedDay.subtract(Duration(days: 2)): ['Event A6', 'Event B6'],
-      _selectedDay: ['Event A7', 'Event B7', 'Event C7', 'Event D7'],
-      _selectedDay.add(Duration(days: 1)): ['Event A8', 'Event B8', 'Event C8', 'Event D8'],
-      _selectedDay.add(Duration(days: 3)): Set.from(['Event A9', 'Event A9', 'Event B9']).toList(),
-      _selectedDay.add(Duration(days: 7)): ['Event A10', 'Event B10', 'Event C10'],
-      _selectedDay.add(Duration(days: 11)): ['Event A11', 'Event B11'],
-      _selectedDay.add(Duration(days: 17)): ['Event A12', 'Event B12', 'Event C12', 'Event D12'],
-      _selectedDay.add(Duration(days: 22)): ['Event A13', 'Event B13'],
-      _selectedDay.add(Duration(days: 26)): ['Event A14', 'Event B14', 'Event C14'],
+      _selectedDay.subtract(Duration(days: 30)): [Event('Event A0'), Event('Event B0'), Event('Event C0')],
+      _selectedDay.subtract(Duration(days: 27)): [Event('Event A1')],
+      _selectedDay.subtract(Duration(days: 20)): [Event('Event A2'), Event('Event B2'), Event('Event C2')],
+      _selectedDay.subtract(Duration(days: 16)): [Event('Event A3'), Event('Event B3')],
+      _selectedDay.subtract(Duration(days: 10)): [Event('Event A4'), Event('Event B4'), Event('Event C4')],
+      _selectedDay.subtract(Duration(days: 4)): [Event('Event A5'), Event('Event B5'), Event('Event C5')],
+      _selectedDay.subtract(Duration(days: 2)): [Event('Event A6'), Event('Event B6')],
+      _selectedDay: [Event('Event A7'), Event('Event B7'), Event('Event C7'), Event('Event D7')],
+      _selectedDay.add(Duration(days: 1)): [Event('Event A8'), Event('Event B8'), Event('Event C8'), Event('Event D8')],
+      _selectedDay.add(Duration(days: 3)): Set.of([Event('Event A9'), Event('Event A9'), Event('Event B9')]).toList(),
+      _selectedDay.add(Duration(days: 7)): [Event('Event A10'), Event('Event B10'), Event('Event C10')],
+      _selectedDay.add(Duration(days: 11)): [Event('Event A11'), Event('Event B11')],
+      _selectedDay.add(Duration(days: 17)): [Event('Event A12'), Event('Event B12'), Event('Event C12')],
+      _selectedDay.add(Duration(days: 22)): [Event('Event A13'), Event('Event B13')],
+      _selectedDay.add(Duration(days: 26)): [Event('Event A14'), Event('Event B14'), Event('Event C14')],
     };
 
     _selectedEvents = _events[_selectedDay] ?? [];
-    _calendarController = CalendarController();
+    _calendarFormat = CalendarFormat.month;
 
     _animationController = AnimationController(
       vsync: this,
@@ -83,23 +96,35 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   @override
   void dispose() {
     _animationController.dispose();
-    _calendarController.dispose();
     super.dispose();
   }
 
-  void _onDaySelected(DateTime day, List events, List holidays) {
-    print('CALLBACK: _onDaySelected');
-    setState(() {
-      _selectedEvents = events;
+  void _onDaySelected(DateTime day, List<Event> events) {
+    print('CALLBACK: _onDaySelected $day');
+
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      setState(() {
+        _selectedDay = day;
+        _selectedEvents = events;
+      });
     });
   }
 
   void _onVisibleDaysChanged(DateTime first, DateTime last, CalendarFormat format) {
-    print('CALLBACK: _onVisibleDaysChanged');
+    print('CALLBACK: _onVisibleDaysChanged 🍎🍎🍎🍎🍎');
+    setState(() {
+      _selectedDay = _calendarController.focusedDay;
+    });
+    if (_calendarFormat != format) {
+      setState(() {
+        _calendarFormat = format;
+      });
+    }
   }
 
-  void _onCalendarCreated(DateTime first, DateTime last, CalendarFormat format) {
+  void _onCalendarCreated(DateTime first, DateTime last, CalendarFormat format, CalendarController<Event> controller) {
     print('CALLBACK: _onCalendarCreated');
+    _calendarController = controller;
   }
 
   @override
@@ -114,7 +139,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
           // Switch out 2 lines below to play with TableCalendar's settings
           //-----------------------
           _buildTableCalendar(),
-          // _buildTableCalendarWithBuilders(),
+//           _buildTableCalendarWithBuilders(),
           const SizedBox(height: 8.0),
           _buildButtons(),
           const SizedBox(height: 8.0),
@@ -126,16 +151,18 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
 
   // Simple TableCalendar configuration (using Styles)
   Widget _buildTableCalendar() {
-    return TableCalendar(
-      calendarController: _calendarController,
+    return TableCalendar<Event>(
+      locale: 'zh_CN',
       events: _events,
       holidays: _holidays,
+      selectedDay: _selectedDay,
+      calendarFormat: _calendarFormat,
       startingDayOfWeek: StartingDayOfWeek.monday,
       calendarStyle: CalendarStyle(
         selectedColor: Colors.deepOrange[400],
         todayColor: Colors.deepOrange[200],
         markersColor: Colors.brown[700],
-        outsideDaysVisible: false,
+//        outsideDaysVisible: false,
       ),
       headerStyle: HeaderStyle(
         formatButtonTextStyle: TextStyle().copyWith(color: Colors.white, fontSize: 15.0),
@@ -152,15 +179,14 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
 
   // More advanced TableCalendar configuration (using Builders & Styles)
   Widget _buildTableCalendarWithBuilders() {
-    return TableCalendar(
-      locale: 'pl_PL',
-      calendarController: _calendarController,
+    return TableCalendar<Event>(
+      locale: 'zh_CN',
       events: _events,
       holidays: _holidays,
-      initialCalendarFormat: CalendarFormat.month,
-      formatAnimation: FormatAnimation.slide,
-      startingDayOfWeek: StartingDayOfWeek.sunday,
-      availableGestures: AvailableGestures.all,
+      calendarFormat: CalendarFormat.month,
+      formatAnimation: FormatAnimation.scale,
+      startingDayOfWeek: StartingDayOfWeek.monday,
+      availableGestures: AvailableGestures.horizontalSwipe,
       availableCalendarFormats: const {
         CalendarFormat.month: '',
         CalendarFormat.week: '',
@@ -178,13 +204,13 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         formatButtonVisible: false,
       ),
       builders: CalendarBuilders(
+        // 选中的日期
         selectedDayBuilder: (context, date, _) {
           return FadeTransition(
             opacity: Tween(begin: 0.0, end: 1.0).animate(_animationController),
             child: Container(
-              margin: const EdgeInsets.all(4.0),
-              padding: const EdgeInsets.only(top: 5.0, left: 6.0),
-              color: Colors.deepOrange[300],
+              alignment: Alignment.center,
+              color: Colors.red,
               width: 100,
               height: 100,
               child: Text(
@@ -194,15 +220,17 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
             ),
           );
         },
+        // 今天
         todayDayBuilder: (context, date, _) {
           return Container(
-            margin: const EdgeInsets.all(4.0),
-            padding: const EdgeInsets.only(top: 5.0, left: 6.0),
-            color: Colors.amber[400],
+//            margin: const EdgeInsets.all(4.0),
+//            padding: const EdgeInsets.only(top: 5.0, left: 6.0),
+            alignment: Alignment.center,
+            color: Colors.green,
             width: 100,
             height: 100,
             child: Text(
-              '${date.day}',
+              '今',
               style: TextStyle().copyWith(fontSize: 16.0),
             ),
           );
@@ -212,11 +240,18 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
 
           if (events.isNotEmpty) {
             children.add(
-              Positioned(
-                right: 1,
-                bottom: 1,
-                child: _buildEventsMarker(date, events),
-              ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    Container(color: Colors.cyan, width: 5, height: 5,),
+                    SizedBox(width: 2,),
+                    Container(color: Colors.cyan, width: 5, height: 5,),
+                  ],)
+//              Positioned(
+//                right: 1,
+//                bottom: 1,
+//                child: _buildEventsMarker(date, events),
+//              ),
             );
           }
 
@@ -233,8 +268,8 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
           return children;
         },
       ),
-      onDaySelected: (date, events, holidays) {
-        _onDaySelected(date, events, holidays);
+      onDaySelected: (date, events) {
+        _onDaySelected(date, events);
         _animationController.forward(from: 0.0);
       },
       onVisibleDaysChanged: _onVisibleDaysChanged,
@@ -242,7 +277,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildEventsMarker(DateTime date, List events) {
+  Widget _buildEventsMarker(DateTime date, List<Event> events) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       decoration: BoxDecoration(
@@ -286,7 +321,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
               child: Text('Month'),
               onPressed: () {
                 setState(() {
-                  _calendarController.setCalendarFormat(CalendarFormat.month);
+                  _calendarFormat = CalendarFormat.month;
                 });
               },
             ),
@@ -294,7 +329,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
               child: Text('2 weeks'),
               onPressed: () {
                 setState(() {
-                  _calendarController.setCalendarFormat(CalendarFormat.twoWeeks);
+                  _calendarFormat = CalendarFormat.twoWeeks;
                 });
               },
             ),
@@ -302,7 +337,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
               child: Text('Week'),
               onPressed: () {
                 setState(() {
-                  _calendarController.setCalendarFormat(CalendarFormat.week);
+                  _calendarFormat = CalendarFormat.week;
                 });
               },
             ),
@@ -312,10 +347,13 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         RaisedButton(
           child: Text('Set day ${dateTime.day}-${dateTime.month}-${dateTime.year}'),
           onPressed: () {
-            _calendarController.setSelectedDay(
-              DateTime(dateTime.year, dateTime.month, dateTime.day),
-              runCallback: true,
-            );
+            setState(() {
+              _calendarController.setSelectedDay(DateTime(dateTime.year, dateTime.month, dateTime.day));
+
+              DateTime first = _calendarController.visibleDays.first;
+              DateTime last = _calendarController.visibleDays.last;
+              print(' ${first.month}.${first.day}  ${last.month}.${last.day}  ');
+            });
           },
         ),
       ],
@@ -325,7 +363,7 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   Widget _buildEventList() {
     return ListView(
       children: _selectedEvents
-          .map((event) => Container(
+          .map((Event event) => Container(
                 decoration: BoxDecoration(
                   border: Border.all(width: 0.8),
                   borderRadius: BorderRadius.circular(12.0),
