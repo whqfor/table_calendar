@@ -58,11 +58,13 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
   CalendarFormat _calendarFormat;
   AnimationController _animationController;
   CalendarController<Event> _calendarController;
+  DateTime _monthTime;
+  DateTime _today;
 
   @override
   void initState() {
     super.initState();
-    _selectedDay = DateTime.now();
+    _selectedDay = _monthTime = _today = DateTime.now();
 
     _events = {
       _selectedDay.subtract(Duration(days: 30)): [Event('Event A0'), Event('Event B0'), Event('Event C0')],
@@ -112,12 +114,30 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
 
   void _onVisibleDaysChanged(DateTime first, DateTime last, CalendarFormat format) {
     print('CALLBACK: _onVisibleDaysChanged 🍎🍎🍎🍎🍎');
-    setState(() {
-      _selectedDay = _calendarController.focusedDay;
-    });
-    if (_calendarFormat != format) {
-      setState(() {
-        _calendarFormat = format;
+    // setState(() {
+    //   _selectedDay = _calendarController.focusedDay;
+    // });
+    // if (_calendarFormat != format) {
+    //   setState(() {
+    //     _calendarFormat = format;
+    //   });
+    // }
+
+    DateTime selectDay = _calendarController.focusedDay;
+    if (first.difference(_today) <= Duration(seconds: 0) &&
+        last.difference(_today) >= Duration(seconds: 0)) {
+      selectDay = _today;
+    }
+
+    if (_monthTime.month != _calendarController.focusedDay.month) {
+      Future.delayed(Duration(milliseconds: 350), () {
+        setState(() {
+          _monthTime = _calendarController.focusedDay;
+          if (_selectedDay.month != _monthTime.month) {
+            _selectedDay = selectDay;
+            print('_onVisibleDaysChanged _selectedDay $_selectedDay');
+          }
+        });
       });
     }
   }
@@ -138,8 +158,8 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
         children: <Widget>[
           // Switch out 2 lines below to play with TableCalendar's settings
           //-----------------------
-          _buildTableCalendar(),
-//           _buildTableCalendarWithBuilders(),
+          // _buildTableCalendar(),
+          _buildTableCalendarWithBuilders(),
           const SizedBox(height: 8.0),
           _buildButtons(),
           const SizedBox(height: 8.0),
@@ -183,19 +203,20 @@ class _MyHomePageState extends State<MyHomePage> with TickerProviderStateMixin {
       locale: 'zh_CN',
       events: _events,
       holidays: _holidays,
+      selectedDay: _selectedDay,
       calendarFormat: CalendarFormat.month,
       formatAnimation: FormatAnimation.scale,
       startingDayOfWeek: StartingDayOfWeek.monday,
       availableGestures: AvailableGestures.horizontalSwipe,
-      availableCalendarFormats: const {
-        CalendarFormat.month: '',
-        CalendarFormat.week: '',
-      },
-      calendarStyle: CalendarStyle(
-        outsideDaysVisible: false,
-        weekendStyle: TextStyle().copyWith(color: Colors.blue[800]),
-        holidayStyle: TextStyle().copyWith(color: Colors.blue[800]),
-      ),
+      // availableCalendarFormats: const {
+      //   CalendarFormat.month: '',
+      //   CalendarFormat.week: '',
+      // },
+      // calendarStyle: CalendarStyle(
+      //   outsideDaysVisible: true,
+      //   weekendStyle: TextStyle().copyWith(color: Colors.blue[800]),
+      //   holidayStyle: TextStyle().copyWith(color: Colors.blue[800]),
+      // ),
       daysOfWeekStyle: DaysOfWeekStyle(
         weekendStyle: TextStyle().copyWith(color: Colors.blue[600]),
       ),
